@@ -1,0 +1,25 @@
+{
+  "name": "HINT 출결관리",
+  "short_name": "HINT 출결",
+  "description": "현대자동차 K-뉴딜 HINT 임베디드AI(HW) 출결 캘린더",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF1F6",
+  "theme_color": "#16233F",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

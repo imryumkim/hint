@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>HINT 출결관리</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#16233F" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="HINT 출결" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html,body{margin:0;background:#EEF1F6;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;color:#1B2540}
+  *{box-sizing:border-box}
+  input[type=checkbox]{accent-color:#22345C;width:16px;height:16px}
+  select{outline:none}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#CBD4E2;border-radius:8px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ---------- 아이콘 ----------
+function I({ size = 16, color = "currentColor", children }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{children}</svg>
+  );
+}
+const Calendar = (p) => <I {...p}><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></I>;
+const ChevronLeft = (p) => <I {...p}><path d="m15 18-6-6 6-6" /></I>;
+const ChevronRight = (p) => <I {...p}><path d="m9 18 6-6-6-6" /></I>;
+const AlertTriangle = (p) => <I {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></I>;
+const Check = (p) => <I {...p}><path d="M20 6 9 17l-5-5" /></I>;
+const X = (p) => <I {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></I>;
+const RotateCcw = (p) => <I {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></I>;
+const Wallet = (p) => <I {...p}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></I>;
+const GraduationCap = (p) => <I {...p}><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" /><path d="M22 10v6" /><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></I>;
+const Clock = (p) => <I {...p}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></I>;
+const Info = (p) => <I {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></I>;
+const Download = (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></I>;
+const Upload = (p) => <I {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></I>;
+const ShieldAlert = (p) => <I {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M12 8v4" /><path d="M12 16h.01" /></I>;
+
+// ---------- 팔레트 (화이트 + 네이비) ----------
+const C = {
+  page: "#EEF1F6", card: "#FFFFFF", soft: "#F1F4F9", line: "#E1E7F0",
+  navy: "#16233F", navy2: "#22345C", ink: "#1B2540", sub: "#66748E",
+  blue: "#2E6BD6", blueDark: "#22345C",
+  present: "#0E9F8E", partial: "#C77D00", absent: "#D93A3F", excused: "#2E6BD6",
+};
+const SHADOW = "0 1px 3px rgba(20,30,55,0.06), 0 1px 2px rgba(20,30,55,0.04)";
+const tint = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
+const HOLIDAYS = {
+  "2026-08-17": "광복절 대체휴무", "2026-09-24": "추석연휴", "2026-09-25": "추석연휴",
+  "2026-10-05": "개천절 대체휴무", "2026-10-09": "한글날",
+};
+const SPECIAL = {
+  "2026-07-27": "입소식", "2026-07-30": "천안GLC 견학",
+  "2026-08-13": "화성공장 견학", "2026-10-22": "수료식",
+};
+// [짧은 태그, 전체 설명]
+const LESSON = {
+  "2026-07-27": ["입소식", "입소식"],
+  "2026-07-30": ["견학", "천안GLC 현장견학 (분해조립)"],
+  "2026-07-31": ["소프트스킬", "소프트스킬 · 문제인식 및 구조화 / 현업 사례기반 문제해결"],
+  "2026-08-03": ["소프트스킬", "소프트스킬 · 첫 인상과 출근 매너 / 상하관계 예절"],
+  "2026-08-04": ["AI", "디지털스킬 · AI 트렌드 및 기본원리 / 프롬프트 작성법"],
+  "2026-08-05": ["AI", "디지털스킬 · AI 활용 문서작성 / 기업업무"],
+  "2026-08-06": ["AI", "디지털스킬 · 데이터기반 시장분석 / AI 활용 제품기획"],
+  "2026-08-07": ["콘텐츠", "디지털스킬 · 콘텐츠 기획 / 채널별 콘텐츠 제작"],
+  "2026-08-10": ["코딩", "디지털스킬 · 바이브 코딩 기초 / 나만의 커리어 로드맵"],
+  "2026-08-11": ["자동차공학", "직무특화 · 자동차공학 개론"],
+  "2026-08-12": ["자동차공학", "직무특화 · 자동차공학 개론"],
+  "2026-08-13": ["화성공장", "화성공장 견학 + 이론"],
+  "2026-08-14": ["소프트스킬", "소프트스킬 · 첫 인상과 출근 매너 / 상하관계 예절"],
+  "2026-08-18": ["전장", "직무특화 · 자동차 전장시스템 이해"],
+  "2026-08-19": ["모빌리티SW", "직무특화 · 모빌리티 SW 개론 및 프로세스"],
+  "2026-08-20": ["모빌리티SW", "직무특화 · 모빌리티 SW 개론 및 프로세스"],
+  "2026-08-21": ["동기부여", "동기부여 · 전략 CRP / 오늘의 발견을 내일의 나로"],
+  "2026-08-24": ["모빌리티SW", "직무특화 · 모빌리티 SW 개론 및 프로세스"],
+  "2026-08-25": ["C", "직무특화 · C 프로그래밍"],
+  "2026-08-26": ["C", "직무특화 · C 프로그래밍"],
+  "2026-08-27": ["C", "직무특화 · C 프로그래밍"],
+  "2026-08-28": ["동기부여", "동기부여 · 회복탄력성 진단 / 나를 움직이는 동기 점검"],
+  "2026-08-31": ["C", "직무특화 · C 프로그래밍"],
+  "2026-09-01": ["임베디드", "직무특화 · 임베디드 시스템의 이해"],
+  "2026-09-02": ["임베디드", "직무특화 · 임베디드 시스템의 이해"],
+  "2026-09-03": ["회로", "직무특화 · 임베디드 시스템 인터페이스 회로"],
+  "2026-09-04": ["동기부여", "동기부여 · 대인관계능력 / 자아낙관성·생활만족도"],
+  "2026-09-07": ["회로", "직무특화 · 임베디드 시스템 인터페이스 회로"],
+  "2026-09-08": ["MCU", "직무특화 · MCU 프로그래밍"],
+  "2026-09-09": ["MCU", "직무특화 · MCU 프로그래밍"],
+  "2026-09-10": ["MCU", "직무특화 · MCU 프로그래밍"],
+  "2026-09-11": ["동기부여", "동기부여 · 뇌 휴식과 우선순위 관리 / 루틴과 시간관리"],
+  "2026-09-14": ["통신", "직무특화 · 자동차 통신 시스템"],
+  "2026-09-15": ["통신", "직무특화 · 자동차 통신 시스템"],
+  "2026-09-16": ["RTOS", "직무특화 · 실시간 운영체제 기반 전자제어기 프로그래밍"],
+  "2026-09-17": ["RTOS", "직무특화 · 실시간 운영체제 기반 전자제어기 프로그래밍"],
+  "2026-09-18": ["RTOS", "직무특화 · 실시간 운영체제 기반 전자제어기 프로그래밍"],
+  "2026-09-21": ["Matlab", "직무특화 · Matlab + Simulink"],
+  "2026-09-22": ["Matlab", "직무특화 · Matlab + Simulink"],
+  "2026-09-23": ["모델제어", "직무특화 · 전자제어기를 위한 모델기반 제어"],
+  "2026-09-28": ["모델제어", "직무특화 · 전자제어기를 위한 모델기반 제어"],
+  "2026-09-29": ["모델제어", "직무특화 · 전자제어기를 위한 모델기반 제어"],
+  "2026-09-30": ["모델제어", "직무특화 · 전자제어기를 위한 모델기반 제어"],
+  "2026-10-01": ["SW테스팅", "직무특화 · SW 테스팅"],
+  "2026-10-02": ["현직자특강", "현직자특강"],
+  "2026-10-06": ["SW테스팅", "직무특화 · SW 테스팅"],
+  "2026-10-07": ["SW테스팅", "직무특화 · SW 테스팅"],
+  "2026-10-08": ["MBD", "직무특화 · MBD 활용 임베디드 AI 구현 및 최적화"],
+  "2026-10-12": ["MBD", "직무특화 · MBD 활용 임베디드 AI 구현 및 최적화"],
+  "2026-10-13": ["MBD", "직무특화 · MBD 활용 임베디드 AI 구현 및 최적화"],
+  "2026-10-14": ["MBD", "직무특화 · MBD 활용 임베디드 AI 구현 및 최적화"],
+  "2026-10-15": ["문화체험", "문화체험"],
+  "2026-10-16": ["진로", "진로탐색 · My New Direction / 채용환경 및 직무 탐색"],
+  "2026-10-19": ["진로", "진로탐색 · My New Career / 자기 이해와 커리어 가치관 설계"],
+  "2026-10-20": ["진로", "진로탐색 · My New Portfolio / 자기소개서·포트폴리오 완성"],
+  "2026-10-21": ["진로", "진로탐색 · 실전 면접 대응 및 자신감 향상"],
+  "2026-10-22": ["수료식", "수료식"],
+};
+const MONTHS = [{ y: 2026, m: 7 }, { y: 2026, m: 8 }, { y: 2026, m: 9 }, { y: 2026, m: 10 }];
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const ALLOWANCE = { 1: 4, 2: 4, 3: 3 };
+const EXCUSE_REASONS = [
+  { key: "훈련·시험", hint: "훈련과정 관련 자격시험 응시확인서(접수확인서 불가)" },
+  { key: "면접", hint: "면접확인서" },
+  { key: "예비군 등", hint: "예비군/민방위/징병검사 참여 증빙" },
+  { key: "결혼(본인)", hint: "청첩장, 가족관계증명서 · 최대 5일" },
+  { key: "결혼(자녀)", hint: "청첩장, 가족관계증명서 · 최대 1일" },
+  { key: "사망", hint: "사망진단서 등 병원확인서류, 가족관계증명서" },
+  { key: "출산(배우자)", hint: "출생증명서 등 병원확인서류 · 최대 5일" },
+  { key: "질병·입원", hint: "진료확인서/입·퇴원확인서(일반건강검진 불인정) · 전체 10% 한도(약 5~6일)" },
+  { key: "휴가", hint: "휴가신청서 · 월 1일" },
+];
+
+function ymd(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function periodOf(s) { if (s <= "2026-08-26") return 1; if (s <= "2026-09-26") return 2; return 3; }
+function computeStats(days, records) {
+  let realAbsence = 0, lateCount = 0, attended = 0, unrecorded = 0;
+  for (const d of days) {
+    const r = records[d];
+    if (!r || r.type === "none") { unrecorded++; continue; }
+    if (r.type === "결석") realAbsence++;
+    else if (r.type === "출석") { r.incomplete ? realAbsence++ : attended++; }
+    else if (r.type === "공가") attended++;
+    else if (r.type === "부분") { if (r.instantAbsent) realAbsence++; else { attended++; lateCount += (r.events?.length || 0); } }
+  }
+  const convertedAbsence = Math.floor(lateCount / 3);
+  return { realAbsence, lateCount, convertedAbsence, totalAbsence: realAbsence + convertedAbsence, attended, unrecorded, count: days.length };
+}
+
+function App() {
+  const [records, setRecords] = useState({});
+  const [monthIdx, setMonthIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+
+  const trainingDays = useMemo(() => {
+    const res = []; let dt = new Date(2026, 6, 27); const end = new Date(2026, 9, 22);
+    while (dt <= end) { const s = ymd(dt); const dow = dt.getDay(); if (dow >= 1 && dow <= 5 && !HOLIDAYS[s]) res.push(s); dt.setDate(dt.getDate() + 1); }
+    return res;
+  }, []);
+  const trainingSet = useMemo(() => new Set(trainingDays), [trainingDays]);
+  const periodDays = useMemo(() => ({
+    1: trainingDays.filter((d) => periodOf(d) === 1),
+    2: trainingDays.filter((d) => periodOf(d) === 2),
+    3: trainingDays.filter((d) => periodOf(d) === 3),
+  }), [trainingDays]);
+
+  useEffect(() => { try { const r = localStorage.getItem("hint-attendance"); if (r) setRecords(JSON.parse(r)); } catch (e) {} setLoaded(true); }, []);
+  useEffect(() => { if (!loaded) return; try { localStorage.setItem("hint-attendance", JSON.stringify(records)); } catch (e) {} }, [records, loaded]);
+
+  const all = useMemo(() => computeStats(trainingDays, records), [trainingDays, records]);
+  const p = useMemo(() => ({ 1: computeStats(periodDays[1], records), 2: computeStats(periodDays[2], records), 3: computeStats(periodDays[3], records) }), [periodDays, records]);
+
+  const total = trainingDays.length;
+  const maxAbsence = Math.floor(total * 0.2);
+  const remain = maxAbsence - all.totalAbsence;
+  const rate = ((total - all.totalAbsence) / total) * 100;
+  const passOk = all.totalAbsence <= maxAbsence;
+  const expelTotal = all.totalAbsence > total * 0.2;
+  const nextConv = all.lateCount % 3 === 0 ? 3 : 3 - (all.lateCount % 3);
+
+  const periodInfo = [1, 2, 3].map((k) => {
+    const st = p[k]; const days = periodDays[k].length; const expelTh = Math.round(days * 0.5);
+    const pr = ((days - st.totalAbsence) / days) * 100;
+    return { k, st, days, allowance: ALLOWANCE[k], payOk: st.totalAbsence <= ALLOWANCE[k], expelTh, expel: st.totalAbsence >= expelTh, pr };
+  });
+  const anyExpel = expelTotal || periodInfo.some((x) => x.expel);
+  const anyPayFail = periodInfo.some((x) => !x.payOk);
+
+  function setRecord(date, rec) { setRecords((prev) => { const n = { ...prev }; if (!rec || rec.type === "none") delete n[date]; else n[date] = rec; return n; }); }
+  const todayStr = ymd(new Date());
+  const todayTraining = trainingSet.has(todayStr);
+  const todayRec = records[todayStr];
+  const td = new Date(todayStr + "T00:00:00");
+  const todayLabel = `${td.getMonth() + 1}월 ${td.getDate()}일 (${DOW[td.getDay()]})`;
+  const missed = trainingDays.filter((d) => d < todayStr && !records[d]);
+
+  const fileRef = useRef(null);
+  function exportData() {
+    try {
+      const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `hint-출결백업-${todayStr}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {}
+  }
+  function importData(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (data && typeof data === "object" && !Array.isArray(data)) setRecords(data);
+        else alert("올바른 백업 파일이 아닙니다.");
+      } catch (e) { alert("파일을 읽을 수 없습니다. 백업 JSON인지 확인해주세요."); }
+    };
+    reader.readAsText(file);
+    ev.target.value = "";
+  }
+  function goToDate(d) {
+    const mi = MONTHS.findIndex((mo) => mo.m === parseInt(d.slice(5, 7), 10));
+    if (mi >= 0) setMonthIdx(mi);
+    setSelected(d);
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.page, color: C.ink }}>
+      {/* 헤더 (풀블리드 네이비 바 + 셰브론) */}
+      <div className="sticky top-0 z-20" style={{ background: `linear-gradient(100deg, ${C.navy} 0%, ${C.navy2} 100%)` }}>
+        <div className="mx-auto w-full relative overflow-hidden" style={{ maxWidth: 720, padding: "12px 14px" }}>
+          <svg className="absolute" style={{ right: -10, top: 0, height: "100%", opacity: 0.5 }} width="150" height="60" viewBox="0 0 150 60" fill="none">
+            <path d="M60 0 L90 30 L60 60" stroke="rgba(255,255,255,0.10)" strokeWidth="14" />
+            <path d="M95 0 L125 30 L95 60" stroke="rgba(255,255,255,0.14)" strokeWidth="14" />
+            <path d="M130 0 L160 30 L130 60" stroke="rgba(255,255,255,0.18)" strokeWidth="14" />
+          </svg>
+          <div className="flex items-center justify-between relative">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)" }}>
+                <Calendar size={19} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: 0.2, color: "#fff" }}>HINT 출결관리</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>임베디드 AI (HW) · 2026.07.27–10.22</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto w-full" style={{ maxWidth: 720, padding: "0 14px 40px" }}>
+        {!loaded ? (
+          <div className="flex items-center justify-center gap-2 py-24" style={{ color: C.sub }}><Clock size={16} /> 불러오는 중…</div>
+        ) : (
+          <React.Fragment>
+            {/* 오늘 빠른 체크인 */}
+            <section className="rounded-2xl p-3.5 mt-3" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: SHADOW }}>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div style={{ fontSize: 11, color: C.sub }}>오늘</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: C.ink }}>{todayLabel}</div>
+                </div>
+                {todayTraining ? (
+                  todayRec ? (
+                    <div className="flex items-center gap-2">
+                      <StatusChip rec={todayRec} />
+                      <button onClick={() => setSelected(todayStr)} className="rounded-xl px-3 py-2" style={{ background: C.soft, color: C.ink, fontSize: 13, fontWeight: 600 }}>수정</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setSelected(todayStr)} className="rounded-xl px-3 py-2" style={{ background: C.soft, color: C.ink, fontSize: 13, fontWeight: 600 }}>상세</button>
+                      <button onClick={() => setRecord(todayStr, { type: "출석", incomplete: false })} className="rounded-xl px-4 py-2 flex items-center gap-1.5" style={{ background: C.present, color: "#fff", fontSize: 14, fontWeight: 700 }}><Check size={15} /> 출석 체크</button>
+                    </div>
+                  )
+                ) : (
+                  <span style={{ fontSize: 12.5, color: C.sub }}>오늘은 소정훈련일이 아니에요</span>
+                )}
+              </div>
+            </section>
+
+            {(anyExpel || !passOk) && (
+              <Banner tone="danger"><ShieldAlert size={16} />
+                {anyExpel ? "제적 위험 구간입니다. 결석일수를 즉시 확인하세요." : "현재 추세면 출석률 80% 미달로 미수료입니다."}
+              </Banner>
+            )}
+            {!anyExpel && passOk && anyPayFail && (
+              <Banner tone="warn"><AlertTriangle size={16} /> 훈련수당 미지급 위험 단위기간이 있습니다.</Banner>
+            )}
+
+            {/* 미기록 알림 */}
+            {missed.length > 0 && (
+              <section className="rounded-2xl p-3.5 mt-3" style={{ background: C.card, border: `1px solid ${tint(C.partial, 0.5)}`, boxShadow: SHADOW }}>
+                <div className="flex items-center gap-1.5" style={{ color: "#8A5A00", fontSize: 13, fontWeight: 700 }}>
+                  <AlertTriangle size={14} /> 미기록 {missed.length}일
+                </div>
+                <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>지난 훈련일 중 아직 기록하지 않은 날이에요. 눌러서 기록하세요.</div>
+                <div className="flex flex-wrap gap-1.5 mt-2.5" style={{ maxHeight: 116, overflowY: "auto" }}>
+                  {missed.map((d) => {
+                    const dd = new Date(d + "T00:00:00");
+                    return (<button key={d} onClick={() => goToDate(d)} className="rounded-full px-2.5 py-1"
+                      style={{ fontSize: 12, fontWeight: 600, background: C.soft, color: C.ink, border: `1px solid ${C.line}` }}>{dd.getMonth() + 1}/{dd.getDate()}</button>);
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* 핵심 지표 */}
+            <section className="rounded-2xl p-4 mt-3" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: SHADOW }}>
+              <SectionTitle icon={<GraduationCap size={15} color={C.navy2} />} title="예상 최종 출석률" right="수료 기준 80%" />
+              <div className="flex items-baseline gap-2 mt-1">
+                <span style={{ fontSize: 34, fontWeight: 800, color: passOk ? C.present : C.absent }}>{rate.toFixed(1)}%</span>
+                <span style={{ fontSize: 13, color: C.sub }}>{passOk ? `여유 결석 ${remain}일` : `한계 ${Math.abs(remain)}일 초과`}</span>
+              </div>
+              <Bar value={rate} threshold={80} okColor={C.present} badColor={C.absent} />
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <Metric label="총 결석일수" value={`${all.totalAbsence}일`} sub={`실결석 ${all.realAbsence} + 환산 ${all.convertedAbsence}`} color={all.totalAbsence > maxAbsence ? C.absent : C.ink} />
+                <Metric label="지각·조퇴·외출" value={`${all.lateCount}회`} sub={`환산까지 ${nextConv}회`} color={C.partial} />
+                <Metric label="수료 여유" value={`${remain}일`} sub={`허용 ${maxAbsence}일`} color={remain < 0 ? C.absent : C.present} />
+              </div>
+            </section>
+
+            {/* 단위기간 카드 */}
+            <section className="grid grid-cols-1 gap-2 mt-3">
+              {periodInfo.map((x) => (
+                <div key={x.k} className="rounded-2xl p-3.5" style={{ background: C.card, border: `1px solid ${x.expel ? C.absent : C.line}`, boxShadow: SHADOW }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full px-2.5 py-1" style={{ fontSize: 12, fontWeight: 700, background: C.navy2, color: "#fff" }}>{x.k}차</span>
+                      <span style={{ fontSize: 12, color: C.sub }}>소정 {x.days}일</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Pill ok={x.payOk} okText="수당 지급" badText="수당 미지급" icon={<Wallet size={11} />} />
+                      {x.expel && <Pill ok={false} badText="제적 위험" icon={<ShieldAlert size={11} />} force />}
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between mt-2">
+                    <div className="flex items-baseline gap-1.5">
+                      <span style={{ fontSize: 24, fontWeight: 800, color: x.pr >= 80 ? C.present : C.absent }}>{x.pr.toFixed(1)}%</span>
+                      <span style={{ fontSize: 11, color: C.sub }}>예상 출석률</span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: C.sub, textAlign: "right" }}>
+                      결석 <b style={{ color: x.expel ? C.absent : C.ink }}>{x.st.totalAbsence}</b> · 허용 {x.allowance} · 제적선 {x.expelTh}
+                    </div>
+                  </div>
+                  <Bar value={x.pr} threshold={80} okColor={C.present} badColor={C.absent} thin />
+                </div>
+              ))}
+            </section>
+
+            {/* 캘린더 */}
+            <section className="rounded-2xl p-3 mt-3" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: SHADOW }}>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <button onClick={() => setMonthIdx((i) => Math.max(0, i - 1))} disabled={monthIdx === 0}
+                  className="rounded-lg p-1.5" style={{ background: monthIdx === 0 ? "transparent" : C.soft, opacity: monthIdx === 0 ? 0.3 : 1, color: C.navy2 }}><ChevronLeft size={18} /></button>
+                <div style={{ fontWeight: 700, color: C.ink }}>{MONTHS[monthIdx].y}년 {MONTHS[monthIdx].m}월</div>
+                <button onClick={() => setMonthIdx((i) => Math.min(MONTHS.length - 1, i + 1))} disabled={monthIdx === MONTHS.length - 1}
+                  className="rounded-lg p-1.5" style={{ background: monthIdx === MONTHS.length - 1 ? "transparent" : C.soft, opacity: monthIdx === MONTHS.length - 1 ? 0.3 : 1, color: C.navy2 }}><ChevronRight size={18} /></button>
+              </div>
+              <div className="grid grid-cols-7 mb-1">
+                {DOW.map((d, i) => (<div key={d} className="text-center py-1" style={{ fontSize: 11, color: i === 0 ? "#D14B4B" : i === 6 ? "#3A63B0" : C.sub }}>{d}</div>))}
+              </div>
+              <MonthGrid month={MONTHS[monthIdx]} records={records} trainingSet={trainingSet} todayStr={todayStr} onPick={setSelected} />
+              <Legend />
+            </section>
+
+            <details className="rounded-2xl p-3 mt-3" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: SHADOW }}>
+              <summary className="flex items-center gap-1.5 cursor-pointer" style={{ fontSize: 13, color: C.navy2, fontWeight: 600 }}><Info size={14} /> 출결 규칙 요약</summary>
+              <ul className="mt-2 space-y-1.5" style={{ fontSize: 12.5, color: C.sub, lineHeight: 1.5, paddingLeft: 2 }}>
+                <li>· 지각/조퇴/외출 3회 = 결석 1일로 환산 (하루 2건이면 2회).</li>
+                <li>· 수강시간 50%(약 4시간) 미만(예: 오후 2시 이전 조퇴) → 그날 즉시 결석.</li>
+                <li>· 시작 10분 이내 도착 · 종료 10분 전 이후 퇴실은 지각/조퇴 아님.</li>
+                <li>· 입·퇴실 두 번 모두 체크해야 출석 인정.</li>
+                <li>· 공가(출석인정)는 결석 아님. 사유 발생 다음날까지 증빙 제출.</li>
+                <li>· 소정훈련일 80% 이상 출석해야 수료 (허용 결석 {maxAbsence}일).</li>
+              </ul>
+            </details>
+
+            {/* 데이터 관리 */}
+            <section className="rounded-2xl p-3.5 mt-3" style={{ background: C.card, border: `1px solid ${C.line}`, boxShadow: SHADOW }}>
+              <SectionTitle title="데이터 관리" />
+              <div style={{ fontSize: 11.5, color: C.sub, marginTop: 4 }}>기기를 바꾸거나 브라우저를 정리하기 전에 내보내기로 백업하세요.</div>
+              <div className="grid grid-cols-3 gap-2 mt-2.5">
+                <button onClick={exportData} className="rounded-xl py-2.5 flex items-center justify-center gap-1.5" style={{ background: C.navy2, color: "#fff", fontSize: 13, fontWeight: 700 }}><Download size={14} /> 내보내기</button>
+                <button onClick={() => fileRef.current && fileRef.current.click()} className="rounded-xl py-2.5 flex items-center justify-center gap-1.5" style={{ background: C.soft, color: C.ink, fontSize: 13, fontWeight: 700, border: `1px solid ${C.line}` }}><Upload size={14} /> 가져오기</button>
+                <button onClick={() => setShowReset(true)} className="rounded-xl py-2.5 flex items-center justify-center gap-1.5" style={{ background: "#fff", color: C.absent, fontSize: 13, fontWeight: 700, border: `1px solid ${tint(C.absent, 0.4)}` }}><RotateCcw size={14} /> 초기화</button>
+              </div>
+              <input ref={fileRef} type="file" accept="application/json,.json" onChange={importData} style={{ display: "none" }} />
+            </section>
+
+            <div className="text-center mt-4" style={{ fontSize: 11, color: C.sub }}>
+              기록은 이 브라우저에 자동 저장됩니다. 개인 참고용이며 공식 출결과 다를 수 있어요.
+            </div>
+          </React.Fragment>
+        )}
+      </div>
+
+      {selected && (<DayModal date={selected} record={records[selected]} isTraining={trainingSet.has(selected)}
+        onClose={() => setSelected(null)} onSave={(rec) => { setRecord(selected, rec); setSelected(null); }} />)}
+      {showReset && (<Confirm onCancel={() => setShowReset(false)} onOk={() => { setRecords({}); setShowReset(false); }} />)}
+    </div>
+  );
+}
+
+function SectionTitle({ icon, title, right }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <span style={{ width: 4, height: 15, borderRadius: 2, background: C.navy2, display: "inline-block" }} />
+        <span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{title}</span>
+      </div>
+      {right && <span style={{ fontSize: 12, color: C.sub }}>{right}</span>}
+    </div>
+  );
+}
+
+function MonthGrid({ month, records, trainingSet, todayStr, onPick }) {
+  const first = new Date(month.y, month.m - 1, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(month.y, month.m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  return (
+    <div className="grid grid-cols-7 gap-1">
+      {cells.map((d, i) => {
+        if (d === null) return <div key={i} />;
+        const s = `${month.y}-${String(month.m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const holiday = HOLIDAYS[s]; const training = trainingSet.has(s); const rec = records[s];
+        const isToday = s === todayStr; const info = statusVisual(rec); const clickable = training;
+        return (
+          <button key={i} disabled={!clickable} onClick={() => clickable && onPick(s)}
+            className="rounded-lg flex flex-col items-center relative"
+            style={{
+              height: 62, paddingTop: 5, overflow: "hidden",
+              background: holiday ? "#F1F4F9" : info.bg,
+              border: isToday ? `1.5px solid ${C.blue}` : `1px solid ${training ? (info.bg === "transparent" ? C.line : "transparent") : "transparent"}`,
+              opacity: training || holiday ? 1 : 0.35,
+              cursor: clickable ? "pointer" : "default",
+            }}>
+            <span style={{ fontSize: 13, fontWeight: isToday ? 800 : 600, color: holiday ? C.sub : info.fg, lineHeight: 1 }}>{d}</span>
+            {holiday
+              ? <span style={{ fontSize: 8, color: C.sub, lineHeight: 1, marginTop: 3 }}>휴무</span>
+              : (LESSON[s] && <span style={{ fontSize: 8, color: C.sub, lineHeight: 1.1, marginTop: 3, maxWidth: "94%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{LESSON[s][0]}</span>)}
+            {info.label && <span style={{ fontSize: 8.5, fontWeight: 700, color: info.fg, lineHeight: 1, marginTop: 2 }}>{info.label}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+function statusVisual(rec) {
+  if (!rec || rec.type === "none") return { bg: "transparent", fg: C.ink, label: "", dot: 0 };
+  if (rec.type === "출석") return rec.incomplete
+    ? { bg: tint(C.absent, 0.10), fg: C.absent, label: "입퇴실⚠", dot: 0 }
+    : { bg: tint(C.present, 0.13), fg: C.present, label: "출석", dot: 0 };
+  if (rec.type === "결석") return { bg: tint(C.absent, 0.13), fg: C.absent, label: "결석", dot: 0 };
+  if (rec.type === "공가") return { bg: tint(C.excused, 0.13), fg: C.excused, label: "공가", dot: 0 };
+  if (rec.type === "부분") {
+    if (rec.instantAbsent) return { bg: tint(C.absent, 0.13), fg: C.absent, label: "결석", dot: 0 };
+    return { bg: tint(C.partial, 0.13), fg: C.partial, label: shortEvents(rec.events), dot: rec.events?.length || 0 };
+  }
+  return { bg: "transparent", fg: C.ink, label: "", dot: 0 };
+}
+function shortEvents(ev) {
+  if (!ev || !ev.length) return "";
+  const map = { 지각: "지", 조퇴: "조", 외출: "외" };
+  return ev.map((e) => map[e]).join("");
+}
+
+function DayModal({ date, record, isTraining, onClose, onSave }) {
+  const [type, setType] = useState(record?.type || "none");
+  const [events, setEvents] = useState(record?.events || []);
+  const [instantAbsent, setInstantAbsent] = useState(record?.instantAbsent || false);
+  const [incomplete, setIncomplete] = useState(record?.incomplete || false);
+  const [reason, setReason] = useState(record?.reason || EXCUSE_REASONS[0].key);
+  const dt = new Date(date + "T00:00:00");
+  const label = `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${DOW[dt.getDay()]})`;
+  const special = SPECIAL[date];
+  function toggleEvent(e) { setEvents((prev) => prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]); }
+  function save() {
+    if (type === "none") return onSave(null);
+    if (type === "부분") { if (!events.length && !instantAbsent) return; return onSave({ type: "부분", events, instantAbsent }); }
+    if (type === "출석") return onSave({ type: "출석", incomplete });
+    if (type === "공가") return onSave({ type: "공가", reason });
+    return onSave({ type });
+  }
+  const reasonHint = EXCUSE_REASONS.find((r) => r.key === reason)?.hint;
+  const TYPES = [
+    { k: "출석", label: "출석", color: C.present },
+    { k: "부분", label: "지각·조퇴·외출", color: C.partial },
+    { k: "결석", label: "결석", color: C.absent },
+    { k: "공가", label: "공가(출석인정)", color: C.excused },
+  ];
+  return (
+    <Overlay onClose={onClose}>
+      <div className="flex items-center justify-between mb-1">
+        <div style={{ fontWeight: 800, fontSize: 17, color: C.ink }}>{label}</div>
+        <button onClick={onClose} className="rounded-lg p-1" style={{ background: C.soft, color: C.sub }}><X size={18} /></button>
+      </div>
+      {special && <div style={{ fontSize: 12, color: C.blue, marginBottom: 4 }}>{special}</div>}
+      {!isTraining && <div style={{ fontSize: 12, color: C.sub, marginBottom: 4 }}>* 소정훈련일이 아닙니다.</div>}
+      {LESSON[date] && (
+        <div className="rounded-xl p-2.5 mt-1" style={{ background: C.soft }}>
+          <div style={{ fontSize: 10.5, color: C.sub, marginBottom: 2 }}>오늘 배우는 내용</div>
+          <div style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, lineHeight: 1.35 }}>{LESSON[date][1]}</div>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {TYPES.map((t) => {
+          const on = type === t.k;
+          return (
+            <button key={t.k} onClick={() => setType(t.k)} className="rounded-xl py-2.5 px-3 text-left"
+              style={{ background: on ? t.color : C.soft, color: on ? "#fff" : C.ink, fontWeight: 700, fontSize: 13.5, border: `1px solid ${on ? t.color : C.line}` }}>{t.label}</button>
+          );
+        })}
+      </div>
+      {type === "부분" && (
+        <div className="mt-3 rounded-xl p-3" style={{ background: C.soft }}>
+          <div style={{ fontSize: 12, color: C.sub, marginBottom: 8 }}>발생 항목 (복수 선택, 각 1회로 집계)</div>
+          <div className="flex gap-2">
+            {["지각", "조퇴", "외출"].map((e) => {
+              const on = events.includes(e);
+              return (<button key={e} onClick={() => toggleEvent(e)} className="rounded-full px-3 py-1.5"
+                style={{ fontSize: 13, fontWeight: 600, background: on ? C.partial : "#fff", color: on ? "#fff" : C.sub, border: `1px solid ${on ? C.partial : C.line}` }}>{e}</button>);
+            })}
+          </div>
+          <label className="flex items-center gap-2 mt-3 cursor-pointer" style={{ fontSize: 12.5, color: C.sub }}>
+            <input type="checkbox" checked={instantAbsent} onChange={(e) => setInstantAbsent(e.target.checked)} />
+            수강시간 50%(4시간) 미만 → 이 날 즉시 결석 처리
+          </label>
+        </div>
+      )}
+      {type === "출석" && (
+        <label className="flex items-center gap-2 mt-3 rounded-xl p-3 cursor-pointer" style={{ fontSize: 12.5, color: C.sub, background: C.soft }}>
+          <input type="checkbox" checked={incomplete} onChange={(e) => setIncomplete(e.target.checked)} />
+          입·퇴실 체크 중 하나라도 누락 (출석 불인정 → 결석 처리)
+        </label>
+      )}
+      {type === "공가" && (
+        <div className="mt-3 rounded-xl p-3" style={{ background: C.soft }}>
+          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full rounded-lg px-2 py-2"
+            style={{ background: "#fff", color: C.ink, border: `1px solid ${C.line}`, fontSize: 13 }}>
+            {EXCUSE_REASONS.map((r) => <option key={r.key} value={r.key}>{r.key}</option>)}
+          </select>
+          <div style={{ fontSize: 11.5, color: C.sub, marginTop: 8, lineHeight: 1.4 }}>증빙: {reasonHint}</div>
+        </div>
+      )}
+      <div className="flex gap-2 mt-4">
+        {record && (<button onClick={() => onSave(null)} className="rounded-xl py-2.5 px-4" style={{ background: "#fff", color: C.sub, border: `1px solid ${C.line}`, fontSize: 13.5 }}>기록 삭제</button>)}
+        <button onClick={save} className="rounded-xl py-2.5 flex-1 flex items-center justify-center gap-1.5" style={{ background: C.navy2, color: "#fff", fontWeight: 700, fontSize: 14 }}><Check size={16} /> 저장</button>
+      </div>
+    </Overlay>
+  );
+}
+
+function Overlay({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: "rgba(22,35,63,0.45)" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full rounded-t-2xl sm:rounded-2xl p-4" style={{ maxWidth: 460, background: C.card, border: `1px solid ${C.line}`, boxShadow: "0 12px 40px rgba(20,30,55,0.25)" }}>{children}</div>
+    </div>
+  );
+}
+function Confirm({ onOk, onCancel }) {
+  return (
+    <Overlay onClose={onCancel}>
+      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6, color: C.ink }}>모든 기록을 지울까요?</div>
+      <div style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>저장된 출결 기록이 전부 삭제됩니다. 되돌릴 수 없어요.</div>
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="rounded-xl py-2.5 flex-1" style={{ background: C.soft, color: C.ink, fontSize: 14, fontWeight: 600 }}>취소</button>
+        <button onClick={onOk} className="rounded-xl py-2.5 flex-1" style={{ background: C.absent, color: "#fff", fontSize: 14, fontWeight: 700 }}>전체 삭제</button>
+      </div>
+    </Overlay>
+  );
+}
+function Banner({ children, tone }) {
+  const danger = tone === "danger";
+  const base = danger ? C.absent : C.partial;
+  return (<div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mt-3" style={{ background: tint(base, 0.10), border: `1px solid ${tint(base, 0.5)}`, color: danger ? "#B4232A" : "#8A5A00", fontSize: 13, fontWeight: 600 }}>{children}</div>);
+}
+function Metric({ label, value, sub, color }) {
+  return (<div className="rounded-xl p-2.5" style={{ background: C.soft }}>
+    <div style={{ fontSize: 11, color: C.sub }}>{label}</div>
+    <div style={{ fontSize: 18, fontWeight: 800, color, marginTop: 1 }}>{value}</div>
+    <div style={{ fontSize: 10, color: C.sub, marginTop: 1 }}>{sub}</div>
+  </div>);
+}
+function Pill({ ok, okText, badText, icon, force }) {
+  const good = ok && !force;
+  const base = good ? C.present : C.absent;
+  return (<span className="flex items-center gap-1 rounded-full px-2 py-0.5"
+    style={{ fontSize: 10.5, fontWeight: 700, background: tint(base, 0.12), color: good ? C.present : "#B4232A", border: `1px solid ${tint(base, 0.4)}` }}>{icon}{good ? okText : badText}</span>);
+}
+function Bar({ value, threshold, okColor, badColor, thin, flip }) {
+  const v = Math.max(0, Math.min(100, value));
+  const good = flip ? v <= threshold : v >= threshold;
+  const fill = good ? okColor : badColor;
+  return (<div className="relative rounded-full mt-2" style={{ height: thin ? 6 : 9, background: "#E9EDF4" }}>
+    <div className="rounded-full" style={{ width: `${v}%`, height: "100%", background: fill, transition: "width .3s" }} />
+    {threshold > 0 && threshold < 100 && (<div className="absolute top-0" style={{ left: `${threshold}%`, height: "100%", width: 2, background: "rgba(27,37,64,0.35)" }} />)}
+  </div>);
+}
+function Legend() {
+  const items = [["출석", C.present], ["지각·조퇴·외출", C.partial], ["결석", C.absent], ["공가", C.excused]];
+  return (<div className="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-3">
+    {items.map(([t, c]) => (<span key={t} className="flex items-center gap-1" style={{ fontSize: 10.5, color: C.sub }}><span style={{ width: 8, height: 8, borderRadius: 3, background: c }} /> {t}</span>))}
+  </div>);
+}
+
+function chipText(rec) {
+  if (!rec) return "미기록";
+  if (rec.type === "출석") return rec.incomplete ? "입퇴실 누락" : "출석";
+  if (rec.type === "결석") return "결석";
+  if (rec.type === "공가") return "공가";
+  if (rec.type === "부분") return rec.instantAbsent ? "결석(50%미만)" : (rec.events || []).join("·");
+  return "미기록";
+}
+function StatusChip({ rec }) {
+  const v = statusVisual(rec);
+  return (<span style={{ fontSize: 12, fontWeight: 700, color: v.fg, background: v.bg === "transparent" ? C.soft : v.bg, borderRadius: 999, padding: "5px 11px", whiteSpace: "nowrap" }}>{chipText(rec)}</span>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
